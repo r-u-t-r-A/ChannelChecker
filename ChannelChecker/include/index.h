@@ -1,0 +1,227 @@
+const char index_html[] = R"=====(
+<html>
+  <head>
+    <script>
+        var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
+        
+        connection.onopen = function () {  
+            connection.send('data'); 
+        }; 
+        
+        function requestData() {
+            connection.send('data');
+        };
+        setInterval(requestData, 1000);
+        
+        connection.onerror = function (error) {    
+            console.log('WebSocket Error ', error);
+        };
+
+        connection.onmessage = function onMessage(event) {
+            console.log(event.data);
+            var myObj = JSON.parse(event.data);
+            var keys = Object.keys(myObj);
+
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i]; // np. "r1"
+                var value = myObj[key];
+                var element = document.getElementById(key);
+
+                if (element) {
+                    var card = element.closest('.card');
+                    var cardchannelbanned = element.closest('.cardchannelbanned');
+                    
+                    // Aktualizacja kolorów dla standardowych paneli
+                    if (card) {
+                        if (value == 1) {
+                            card.style.backgroundColor = "#d9534f"; 
+                        } else {
+                            card.style.backgroundColor = "#0a6163"; 
+                        }
+                    }
+
+                    // Aktualizacja kolorów dla zbanowanych paneli
+                    if (cardchannelbanned) {
+                        if (value == 1) {
+                            cardchannelbanned.style.backgroundColor = "#d9544f3c"; 
+                        } else {
+                            cardchannelbanned.style.backgroundColor = "#0f8b8d2a"; // Dodano brakujący znak #
+                        }
+                    }
+                }
+            }
+        } 
+
+        function updateThreshold() {
+          var thrValue = parseInt(document.getElementById('rssiInput').value);
+         
+          if (thrValue >= 600 && thrValue <= 2000) {
+              connection.send('THR:' + thrValue);
+              console.log('Sent new threshold: ' + thrValue);
+          } else {
+              alert("Please enter a value between 600 and 2000.");
+          }
+        }
+
+        
+        function toggleBannedChannels() {
+            var bannedPanels = document.querySelectorAll('.cardchannelbanned');
+            var btn = document.getElementById('toggleBtn');
+            
+            for (var i = 0; i < bannedPanels.length; i++) {
+                bannedPanels[i].classList.toggle('hidden-panel');
+            }
+
+            if (bannedPanels[0].classList.contains('hidden-panel')) {
+                btn.innerText = "Pokaż pozostałe kanały";
+            } else {
+                btn.innerText = "Ukryj pozostałe kanały";
+            }
+        }
+    </script>
+<style> 
+body {
+    background-color: #181a1f;  
+}  
+
+.content {
+    text-align: center;
+    padding: 50px;
+    font: 15px Arial, sans-serif;
+}
+.item-grid {
+  max-width: 1000px;
+  margin: 0px auto; /* Dodane auto, aby wyśrodkować grid na stronie */
+  display: inline-grid;
+  grid-template-columns: 250px 250px 250px 250px;
+  grid-template-rows: 250px 250px 75px;  
+  column-gap: 25px;
+  row-gap: 25px;
+}
+
+.card {
+    border-radius: 25px;
+    text-align: center;
+    background-color: #0a6163;
+    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    transition: background-color 1s ease;
+}
+
+.card-title {
+    font-size: 72px;
+    font-weight: bold;
+    color: white;
+}
+.card-title-channelbanned {
+    font-size: 72px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.157);
+}
+.reading {
+    font-size: 36px;
+    color: rgb(255, 255, 255);
+}
+.readingchannelbanned {
+    font-size: 36px;
+    color: rgba(255, 255, 255, 0.157);
+}
+.title-text {
+  color: #0f8b8d;
+  font-size: 64px;
+  margin-top: -48px;
+  margin-bottom: 17px;
+  font-weight: bold;  
+}
+
+.input-group {
+    margin-bottom: 30px;
+    margin-top: 30px; 
+}
+.input-group input {
+    font-size: 24px;
+    padding: 10px;
+    width: 120px;
+    border-radius: 5px;
+    border: none;
+    text-align: center;
+}
+.input-group button {
+    font-size: 24px;
+    padding: 10px 20px;
+    background-color: #0f8b8d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+.input-group button:hover {
+    background-color: #0a6163;
+}
+
+.cardchannelbanned {
+    border-radius: 25px;
+    text-align: center;
+    background-color: #0f8b8d2a;
+    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    transition: background-color 1s ease;
+}
+
+
+.hidden-panel {
+    display: none !important;
+}
+</style>
+</head>
+  <body>  
+    <div class="content">
+      <p class="title-text">Channel Checker</p>
+        <div class="item-grid">
+            <div class="card">
+                <p class="card-title">R1</p>
+                <p class="reading"><span id="r1"></span></p>
+            </div>
+            <div class="card">
+                <p class="card-title">R3</p>
+                <p class="reading"><span id="r3"></span></p>
+            </div>
+            <div class="card">
+                <p class="card-title">R6</p>
+                <p class="reading"><span id="r6"></span></p>
+            </div>
+            <div class="card">
+                <p class="card-title">R7</p>
+                <p class="reading"><span id="r7"></span></p>
+            </div>
+            
+            <div class="cardchannelbanned hidden-panel">
+                <p class="card-title-channelbanned">R2</p>
+                <p class="readingchannelbanned"><span id="r2"></span></p>
+            </div>
+            <div class="cardchannelbanned hidden-panel">
+                <p class="card-title-channelbanned">R4</p>
+                <p class="readingchannelbanned"><span id="r4"></span></p>
+            </div>
+            <div class="cardchannelbanned hidden-panel">
+                <p class="card-title-channelbanned">R5</p>
+                <p class="readingchannelbanned"><span id="r5"></span></p>
+            </div>
+            <div class="cardchannelbanned hidden-panel">
+                <p class="card-title-channelbanned">R8</p>
+                <p class="readingchannelbanned"><span id="r8"></span></p>
+            </div>
+        </div>
+        
+        <div class="input-group">
+          <input type="number" id="rssiInput" value="1000" min="600" max="2000">
+          <button onclick="updateThreshold()">Set Threshold</button>
+          <button id="toggleBtn" onclick="toggleBannedChannels()" style="background-color: #555;">Pokaż pozostałe kanały</button>
+      </div>
+    </div>
+  </body>
+</html>
+
+)=====";
+
